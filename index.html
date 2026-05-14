@@ -1,0 +1,1712 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>⚔️ Fighter RPG</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none}
+:root{
+  --bg:#080c14;--surface:#0f1420;--s2:#161c2e;--border:#1e2540;
+  --gold:#f0c040;--gold2:#c8960c;--red:#e84040;--blue:#4488ff;
+  --green:#40c070;--purple:#a040e0;--cyan:#30d0e8;
+  --text:#d8dff0;--muted:#5a6080;
+}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif}
+canvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0}
+
+/* ── TOP LEFT ── */
+#top-left{position:fixed;top:10px;left:10px;z-index:20;display:flex;flex-direction:column;gap:4px}
+.tchip{font-size:11px;padding:3px 10px;border-radius:20px;border:1px solid var(--border);background:rgba(0,0,0,.78);backdrop-filter:blur(4px);font-weight:600}
+#race-chip{display:none;font-family:'Cinzel',serif;font-weight:700;font-size:11px}
+#state-chip{display:none;border-color:var(--gold);color:var(--gold)}
+
+/* ── SKILL AREA TOP RIGHT ── */
+#skill-area{position:fixed;top:10px;right:10px;z-index:20;display:flex;flex-direction:column;gap:5px;max-height:calc(100vh - 160px);overflow-y:auto;padding-right:2px}
+.skill-btn{
+  width:66px;height:60px;border-radius:10px;
+  background:rgba(8,12,24,.92);border:1.5px solid var(--border);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--text);font-family:'Rajdhani',sans-serif;
+  font-size:10px;font-weight:700;gap:2px;
+  backdrop-filter:blur(6px);transition:transform .08s;
+  box-shadow:0 2px 12px rgba(0,0,0,.5);
+}
+.skill-btn:active{transform:scale(.9)}
+.skill-btn.locked{opacity:.35;pointer-events:none;filter:grayscale(1)}
+.skill-btn.on-cd{pointer-events:none}
+.sk-icon{font-size:22px;line-height:1}
+.sk-name{font-size:10px;color:var(--muted);line-height:1}
+.sk-cd{font-size:9px;color:var(--gold);display:none;position:absolute;top:4px;right:6px}
+.skill-btn.s-red{border-color:#e84040;box-shadow:0 0 14px rgba(232,64,64,.4)}
+.skill-btn.s-purple{border-color:var(--purple);box-shadow:0 0 12px rgba(160,64,224,.3)}
+.skill-btn .lock-overlay{position:absolute;font-size:9px;bottom:3px;color:var(--muted)}
+
+/* ── BOTTOM HUD ── */
+#bottom-hud{
+  position:fixed;bottom:0;left:0;right:0;z-index:20;
+  background:rgba(5,8,16,.97);border-top:1px solid var(--border);
+  backdrop-filter:blur(8px);padding:5px 8px 7px;display:flex;flex-direction:column;gap:4px
+}
+.hud-bars{display:flex;gap:7px;align-items:center}
+.blabel{font-size:11px;font-weight:700;min-width:18px;text-align:right}
+.bar-bg{flex:1;height:13px;background:rgba(0,0,0,.7);border:1px solid var(--border);border-radius:7px;overflow:hidden;position:relative}
+.bar-fill{height:100%;border-radius:7px;transition:width .2s}
+.bar-txt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:rgba(255,255,255,.85)}
+.hp-fill{background:linear-gradient(90deg,#7a1010,#e84040,#ff5555)}
+.xp-fill{background:linear-gradient(90deg,#604000,#f0c040)}
+.chips{display:flex;align-items:center;gap:5px;flex-shrink:0}
+.chip{padding:2px 7px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid var(--border);font-size:12px;font-weight:700;display:flex;align-items:center;gap:3px}
+.chip.lv{border-color:var(--gold);color:var(--gold);font-family:'Cinzel',serif;font-size:13px}
+.hud-menu{display:flex;gap:4px}
+.mbtn{flex:1;max-width:100px;padding:5px 3px;border-radius:7px;border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--text);font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;cursor:pointer;text-align:center;display:flex;flex-direction:column;align-items:center;gap:1px;transition:all .15s}
+.mbtn:active{transform:scale(.95)}
+.mbtn.locked{opacity:.3;pointer-events:none;filter:grayscale(1)}
+.mbtn .micon{font-size:15px}
+.mbtn .mlabel{font-size:10px;color:var(--muted)}
+
+/* ── MODALS ── */
+.modal{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.88);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:8px}
+.modal.hidden{display:none}
+.mbox{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:500px;max-height:86vh;display:flex;flex-direction:column;overflow:hidden}.mbox-body{padding:12px 14px 14px;overflow-y:auto;flex:1}
+.mhdr{display:flex;align-items:center;justify-content:space-between;padding:11px 14px 10px;flex-shrink:0;border-bottom:1px solid var(--border);background:var(--surface);border-radius:14px 14px 0 0}
+.mtitle{font-family:'Cinzel',serif;font-size:15px;font-weight:900;color:var(--gold)}
+.xbtn{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer}
+.card{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:11px;margin-bottom:8px}
+.card h3{font-size:13px;font-weight:700;margin-bottom:3px}
+.card p{font-size:11px;color:var(--muted);line-height:1.5}
+.crow{display:flex;align-items:center;justify-content:space-between;margin-top:7px;gap:6px}
+.abtn{padding:5px 13px;border-radius:6px;border:none;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:12px;cursor:pointer;transition:transform .1s}
+.abtn:active{transform:scale(.95)}
+.abtn.gold{background:var(--gold2);color:#000}
+.abtn.blue{background:var(--blue);color:#fff}
+.abtn.cyan{background:var(--cyan);color:#000}
+.abtn.eq{background:transparent;border:1px solid var(--green);color:var(--green)}
+.abtn.eqd{background:var(--green);color:#000}
+.abtn:disabled{background:var(--border)!important;color:var(--muted)!important;cursor:not-allowed;border:none!important}
+.pip-row{display:flex;gap:3px;margin:5px 0}
+.pip{width:20px;height:5px;border-radius:3px;background:var(--border)}
+.pip.on{background:var(--gold)}
+.stbl{width:100%;font-size:12px;border-collapse:collapse}
+.stbl td{padding:5px 8px;border-bottom:1px solid var(--border)}
+.stbl td:last-child{text-align:right;font-weight:700}
+.spc{display:flex;align-items:center;gap:4px}
+.sctrl{width:28px;height:28px;border-radius:5px;border:1px solid var(--border);background:rgba(255,255,255,.06);color:var(--text);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center}
+.sctrl:active{transform:scale(.9)}
+
+/* Quest */
+.quest-item{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:11px;margin-bottom:8px;position:relative;overflow:hidden}
+.quest-item.done{border-color:var(--gold);background:rgba(240,192,64,.06)}
+.quest-item h3{font-size:13px;font-weight:700;margin-bottom:3px}
+.quest-item p{font-size:11px;color:var(--muted)}
+.quest-prog-bg{width:100%;height:5px;background:var(--border);border-radius:3px;margin-top:7px;overflow:hidden}
+.quest-prog-fill{height:100%;background:linear-gradient(90deg,var(--gold2),var(--gold));border-radius:3px;transition:width .3s}
+.quest-reward{font-size:11px;color:var(--cyan);margin-top:5px}
+.quest-claim{padding:5px 14px;border-radius:6px;border:none;background:var(--gold);color:#000;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:12px;cursor:pointer;margin-top:7px}
+
+/* Race result */
+#race-result{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.93);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px}
+#race-result.hidden{display:none}
+.rr-card{border:2px solid;border-radius:18px;padding:22px 28px;text-align:center;min-width:260px;background:rgba(12,16,32,.97)}
+.rr-name{font-family:'Cinzel',serif;font-size:26px;font-weight:900;margin-bottom:4px}
+.rr-rar{font-size:13px;font-weight:700;margin-bottom:10px;letter-spacing:.1em}
+.rr-desc{font-size:13px;color:var(--text);line-height:1.8;margin-bottom:14px;text-align:left}
+.rr-btns{display:flex;gap:10px;justify-content:center}
+.rr-keep{padding:9px 22px;border-radius:8px;border:none;font-family:'Cinzel',serif;font-weight:700;font-size:13px;cursor:pointer}
+.rr-skip{padding:9px 22px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'Rajdhani',sans-serif;font-weight:600;font-size:13px;cursor:pointer}
+
+/* Notif */
+#nstack{position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);z-index:80;display:flex;flex-direction:column;gap:5px;align-items:center;pointer-events:none}
+.nitem{background:rgba(8,12,24,.97);border:1px solid;border-radius:10px;padding:8px 16px;font-size:13px;font-weight:700;animation:nIn .3s ease,nOut .4s ease 2.1s forwards;white-space:nowrap;text-align:center;max-width:92vw;word-break:break-all}
+@keyframes nIn{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
+@keyframes nOut{to{opacity:0;transform:scale(.85)}}
+.fdmg{position:fixed;font-weight:900;pointer-events:none;z-index:30;font-family:'Rajdhani',sans-serif;animation:fd 1s ease forwards}
+@keyframes fd{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-65px) scale(.75)}}
+
+/* Autosave badge */
+#save-badge{position:fixed;bottom:150px;left:10px;z-index:20;font-size:10px;color:var(--muted);background:rgba(0,0,0,.6);padding:2px 8px;border-radius:20px;border:1px solid var(--border);opacity:0;transition:opacity .5s}
+#save-badge.show{opacity:1}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<audio id="lvup-sfx" preload="auto">
+  <!-- GitHubのURLを差し替えてください: https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/sunovia-level-up-289723.mp3 -->
+  <source src="https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/sunovia-level-up-289723.mp3" type="audio/mpeg">
+</audio>
+
+<div id="top-left">
+  <div class="tchip" id="kill-chip" style="color:var(--muted)">💀 0</div>
+  <div class="tchip" id="race-chip"></div>
+  <div class="tchip" id="state-chip"></div>
+</div>
+
+<div id="skill-area">
+  <!-- 常時表示 -->
+  <button class="skill-btn s-red" id="sk-attack" onclick="doAttack()">
+    <span class="sk-icon">⚔️</span>
+    <span class="sk-name">攻撃</span>
+    <span class="sk-cd" id="cd-attack"></span>
+  </button>
+  <button class="skill-btn s-purple locked" id="sk-crit" onclick="doCritSkill()">
+    <span class="sk-icon">✨</span>
+    <span class="sk-name">クリ確定</span>
+    <span class="sk-cd" id="cd-crit"></span>
+    <span class="lock-overlay" id="crit-lock-txt">🔒 クエスト</span>
+  </button>
+  <!-- 乱闘系スキル -->
+  <button class="skill-btn brawl-skill locked" id="sk-burst" onclick="doBurstSkill()" style="border-color:#ff6400;box-shadow:0 0 12px rgba(255,100,0,.3)">
+    <span class="sk-icon">🔥</span><span class="sk-name">爆発拳</span>
+    <span class="sk-cd" id="cd-burst"></span>
+    <span class="lock-overlay" id="burst-lock-txt">🔒</span>
+  </button>
+  <button class="skill-btn brawl-skill locked" id="sk-rageSkin" onclick="doRageSkin()" style="border-color:#e84040;box-shadow:0 0 12px rgba(232,64,64,.3)">
+    <span class="sk-icon">😤</span><span class="sk-name">怒り装甲</span>
+    <span class="sk-cd" id="cd-rageSkin"></span>
+    <span class="lock-overlay" id="rageSkin-lock-txt">🔒</span>
+  </button>
+  <button class="skill-btn brawl-skill locked" id="sk-ironBody" onclick="doIronBody()" style="border-color:#aaaacc;box-shadow:0 0 12px rgba(170,170,204,.3)">
+    <span class="sk-icon">🛡️</span><span class="sk-name">鋼体</span>
+    <span class="sk-cd" id="cd-ironBody"></span>
+    <span class="lock-overlay" id="ironBody-lock-txt">🔒</span>
+  </button>
+  <button class="skill-btn brawl-skill locked" id="sk-dragonPunch" onclick="doDragonPunch()" style="border-color:#f0c040;box-shadow:0 0 12px rgba(240,192,64,.3)">
+    <span class="sk-icon">🐉</span><span class="sk-name">龍撃</span>
+    <span class="sk-cd" id="cd-dragonPunch"></span>
+    <span class="lock-overlay" id="dragonPunch-lock-txt">🔒</span>
+  </button>
+  <button class="skill-btn brawl-skill locked" id="sk-soulEat" onclick="doSoulEat()" style="border-color:#a040e0;box-shadow:0 0 12px rgba(160,64,224,.3)">
+    <span class="sk-icon">💀</span><span class="sk-name">魂喰らい</span>
+    <span class="sk-cd" id="cd-soulEat"></span>
+    <span class="lock-overlay" id="soulEat-lock-txt">🔒</span>
+  </button>
+  <!-- 剣系スキル -->
+  <button class="skill-btn sword-skill locked" id="sk-blade" onclick="doBladeSkill()" style="border-color:#4488ff;box-shadow:0 0 12px rgba(68,136,255,.3)">
+    <span class="sk-icon">🗡️</span><span class="sk-name">五連撃</span>
+    <span class="sk-cd" id="cd-blade"></span>
+    <span class="lock-overlay" id="blade-lock-txt">🔒</span>
+  </button>
+  <button class="skill-btn sword-skill locked" id="sk-pierceFang" onclick="doPierceFang()" style="border-color:#30d0e8;box-shadow:0 0 12px rgba(48,208,232,.3)">
+    <span class="sk-icon">🔱</span><span class="sk-name">貫通突き</span>
+    <span class="sk-cd" id="cd-pierceFang"></span>
+    <span class="lock-overlay" id="pierceFang-lock-txt">🔒</span>
+  </button>
+  <button class="skill-btn sword-skill locked" id="sk-whirlwind" onclick="doWhirlwind()" style="border-color:#40c070;box-shadow:0 0 12px rgba(64,192,112,.3)">
+    <span class="sk-icon">🌪️</span><span class="sk-name">旋風斬り</span>
+    <span class="sk-cd" id="cd-whirlwind"></span>
+    <span class="lock-overlay" id="whirlwind-lock-txt">🔒</span>
+  </button>
+  <button class="skill-btn sword-skill locked" id="sk-thunderSlash" onclick="doThunderSlash()" style="border-color:#ffe040;box-shadow:0 0 12px rgba(255,224,64,.3)">
+    <span class="sk-icon">⚡</span><span class="sk-name">雷光斬り</span>
+    <span class="sk-cd" id="cd-thunderSlash"></span>
+    <span class="lock-overlay" id="thunderSlash-lock-txt">🔒</span>
+  </button>
+  <button class="skill-btn sword-skill locked" id="sk-soulBlade" onclick="doSoulBlade()" style="border-color:#f0c040;box-shadow:0 0 16px rgba(240,192,64,.5)">
+    <span class="sk-icon">🌟</span><span class="sk-name">魂剣</span>
+    <span class="sk-cd" id="cd-soulBlade"></span>
+    <span class="lock-overlay" id="soulBlade-lock-txt">🔒</span>
+  </button>
+</div>
+
+<div id="bottom-hud">
+  <div class="hud-bars">
+    <span class="blabel" style="color:var(--red)">HP</span>
+    <div class="bar-bg" style="flex:2.5">
+      <div class="bar-fill hp-fill" id="hp-bar" style="width:100%"></div>
+      <div class="bar-txt" id="hp-txt">100/100</div>
+    </div>
+    <span class="blabel" style="color:var(--gold)">EXP</span>
+    <div class="bar-bg" style="flex:1.5">
+      <div class="bar-fill xp-fill" id="xp-bar" style="width:0%"></div>
+      <div class="bar-txt" id="xp-txt">0/100</div>
+    </div>
+    <div class="chips">
+      <div class="chip lv" id="lv-chip">Lv.1</div>
+      <div class="chip" style="color:var(--gold)">💰<span id="coin-txt">0</span></div>
+      <div class="chip" style="color:var(--cyan)">🏰<span id="dt-txt">0</span></div>
+      <div class="chip" style="color:var(--purple)">💎<span id="ct-txt">0</span></div>
+    </div>
+  </div>
+  <div class="hud-menu">
+    <button class="mbtn" onclick="openModal('status-modal')">
+      <span class="micon">📊</span><span class="mlabel">ステータス</span>
+    </button>
+    <button class="mbtn" id="mbtn-inv" onclick="openModal('inventory-modal')">
+      <span class="micon">🎒</span><span class="mlabel">インベントリ</span>
+    </button>
+    <button class="mbtn" id="mbtn-shop" onclick="openModal('store-modal')">
+      <span class="micon">🏪</span><span class="mlabel">ショップ</span>
+    </button>
+    <button class="mbtn locked" id="mbtn-upg" onclick="openModal('upgrade-modal')">
+      <span class="micon">⬆️</span><span class="mlabel">強化</span>
+    </button>
+    <button class="mbtn" id="mbtn-dng" onclick="openModal('dungeon-modal')">
+      <span class="micon">🏰</span><span class="mlabel">ダンジョン</span>
+    </button>
+    <button class="mbtn" id="mbtn-race" onclick="openModal('race-modal')">
+      <span class="micon">🎲</span><span class="mlabel">種族</span>
+    </button>
+    <button class="mbtn" onclick="openModal('quest-modal')">
+      <span class="micon">📜</span><span class="mlabel">クエスト<span id="quest-badge"></span></span>
+    </button>
+  </div>
+</div>
+
+<!-- Modals -->
+<div class="modal hidden" id="status-modal">
+  <div class="mbox"><div class="mhdr"><div class="mtitle">📊 ステータス</div><button class="xbtn" onclick="closeModal('status-modal')">✕</button></div><div class="mbox-body"><div id="status-content"></div></div></div>
+</div>
+<div class="modal hidden" id="inventory-modal">
+  <div class="mbox"><div class="mhdr"><div class="mtitle">🎒 インベントリ</div><button class="xbtn" onclick="closeModal('inventory-modal')">✕</button></div><div class="mbox-body"><div id="inventory-content"></div></div></div>
+</div>
+<div class="modal hidden" id="store-modal">
+  <div class="mbox"><div class="mhdr"><div class="mtitle">🏪 ショップ</div><button class="xbtn" onclick="closeModal('store-modal')">✕</button></div><div class="mbox-body"><div id="store-content"></div></div></div>
+</div>
+<div class="modal hidden" id="upgrade-modal">
+  <div class="mbox"><div class="mhdr"><div class="mtitle">⬆️ 強化</div><button class="xbtn" onclick="closeModal('upgrade-modal')">✕</button></div><div class="mbox-body">
+    <div style="font-size:11px;color:var(--cyan);margin-bottom:8px">🏰ダンジョントークン / 💎クリスタルトークンで強化</div>
+    <div id="upgrade-content"></div>
+  </div></div>
+</div>
+<div class="modal hidden" id="dungeon-modal">
+  <div class="mbox"><div class="mhdr"><div class="mtitle">🏰 ダンジョン</div><button class="xbtn" onclick="closeModal('dungeon-modal')">✕</button></div><div class="mbox-body">
+    <div class="card">
+      <h3 style="color:var(--gold)">🏰 ダンジョン</h3>
+      <p>5ウェーブを倒せ！クリアで🏰トークン×3。<br>解放条件: Lv.30</p>
+      <div class="crow"><span style="font-size:12px;color:var(--gold)">🏰<span id="d-owned">0</span></span><button class="abtn gold" onclick="startDungeon()">挑戦</button></div>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--cyan)">💎 クリスタルディフェンス</h3>
+      <p>強敵を倒しきれ！クリアで💎トークン×3。<br>解放条件: Lv.50</p>
+      <div class="crow"><span style="font-size:12px;color:var(--purple)">💎<span id="c-owned">0</span></span><button class="abtn cyan" onclick="startCrystal()">挑戦</button></div>
+    </div>
+  </div></div>
+</div>
+<div class="modal hidden" id="race-modal">
+  <div class="mbox"><div class="mhdr"><div class="mtitle">🎲 種族ガチャ</div><button class="xbtn" onclick="closeModal('race-modal')">✕</button></div><div class="mbox-body">
+    <div class="card" style="text-align:center;margin-bottom:10px">
+      <p style="margin-bottom:4px;font-size:12px;color:var(--muted)">1回 💰500 / 10回 💰5,000 / 100回 💰50,000</p>
+      <p style="margin-bottom:8px;font-size:11px;color:var(--cyan)" id="pity-display"></p>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        <button class="abtn gold" style="font-size:13px;padding:7px 16px" onclick="doRaceRoll(1)">💰500<br><span style="font-size:10px">×1</span></button>
+        <button class="abtn gold" style="font-size:13px;padding:7px 16px" onclick="doRaceRoll(10)">💰5,000<br><span style="font-size:10px">×10</span></button>
+        <button class="abtn gold" style="font-size:13px;padding:7px 16px" onclick="doRaceRoll(100)">💰50,000<br><span style="font-size:10px">×100</span></button>
+      </div>
+    </div>
+    <div id="race-list"></div>
+  </div></div>
+</div>
+<div class="modal hidden" id="quest-modal">
+  <div class="mbox"><div class="mhdr"><div class="mtitle">📜 クエスト</div><button class="xbtn" onclick="closeModal('quest-modal')">✕</button></div><div class="mbox-body">
+    <div id="quest-content"></div>
+  </div></div>
+</div>
+
+<!-- Race Result -->
+<div id="race-result" class="hidden">
+  <div class="rr-card" id="rr-card">
+    <div class="rr-name" id="rr-name"></div>
+    <div class="rr-rar" id="rr-rar"></div>
+    <div class="rr-desc" id="rr-desc"></div>
+    <div class="rr-btns">
+      <button class="rr-keep" id="rr-keep-btn" onclick="keepRace()">✓ 装備する</button>
+      <button class="rr-skip" onclick="skipRace()">捨てる</button>
+    </div>
+  </div>
+</div>
+
+<div id="nstack"></div>
+<div id="save-badge">💾 保存済み</div>
+
+<script>
+// ============================================================
+// GAME STATE
+// ============================================================
+const DEFAULT = {
+  level:1, xp:0, xpNext:10,
+  hp:100, hpMax:100,
+  coins:0, kills:0,
+  dungeonTokens:0, crystalTokens:0,
+  statPoints:0, brawlStat:0, swordStat:0, hpStat:0,
+  atkPercent:0,   // % damage upgrade (separate from stat)
+  equippedWeapon:'brawl',
+  inventory:['brawl'],
+  race:null,
+  totalCoinsEarned:0,
+  gachaPityEpic:0,
+  gachaPityLegend:0,
+  upgrades:{dmg:0,critRate:0,critDmg:0,luck:0,atkCd:0,skillCd:0},
+  unlockedSkills:{
+    critSkill:false,
+    // 乱闘系
+    burstSkill:false, rageSkin:false, ironBody:false, dragonPunch:false, soulEat:false,
+    // 剣系
+    bladeSkill:false, pierceFang:false, whirlwind:false, thunderSlash:false, soulBlade:false,
+  },
+  unlockedMenus:{shop:true,inventory:true,upgrade:false,dungeon:false,race:false},
+  questProgress:{},
+  completedQuests:[],
+  gameMode:'play',
+  dungeonWave:0,
+  guaranteeCrit:false,
+};
+
+let G = JSON.parse(JSON.stringify(DEFAULT)); // will be overwritten in init
+
+// ============================================================
+// WEAPONS
+// ============================================================
+const WEAPONS = [
+  {id:'brawl',       name:'乱闘',          icon:'👊', baseDmg:10,  price:0,     desc:'素手攻撃'},
+  // 乱闘（能力付き）
+  {id:'brawl_fire',  name:'炎の拳',        icon:'🔥', baseDmg:18,  price:200,   desc:'[乱闘] 炎をまとう拳。ATK%+10%', brawlMode:true, bonus:{atkPct:10}},
+  {id:'brawl_iron',  name:'鉄拳',          icon:'🥊', baseDmg:25,  price:500,   desc:'[乱闘] 鋼鉄の拳。防御力+15%',   brawlMode:true, bonus:{defMul:0.15}},
+  {id:'brawl_storm', name:'嵐の連打',      icon:'🌪️', baseDmg:20,  price:1000,  desc:'[乱闘] 攻撃CD-0.1秒、ATK%+15%', brawlMode:true, bonus:{atkPct:15, cdReduce:100}},
+  {id:'brawl_dragon',name:'龍の咆哮',      icon:'🐉', baseDmg:40,  price:3000,  desc:'[乱闘] 龍の力。ATK%+25%、CRIT+10%', brawlMode:true, bonus:{atkPct:25, critRate:10}},
+  {id:'brawl_god',   name:'神拳',          icon:'✊', baseDmg:70,  price:8000,  desc:'[乱闘] 神の一撃。ATK%+40%、CRIT倍率+30%', brawlMode:true, bonus:{atkPct:40, critDmg:30}},
+  // 剣系
+  {id:'dagger',      name:'ダガー',        icon:'🗡️', baseDmg:20,  price:100,   desc:'素早い短剣'},
+  {id:'sword',       name:'ショートソード',icon:'⚔️', baseDmg:32,  price:300,   desc:'バランス型'},
+  {id:'longsword',   name:'ロングソード',  icon:'🔱', baseDmg:50,  price:700,   desc:'リーチが長い'},
+  {id:'gsword',      name:'グレートソード',icon:'🗡️', baseDmg:75,  price:1800,  desc:'重くて強烈'},
+  {id:'katana',      name:'カタナ',        icon:'⚔️', baseDmg:110, price:4000,  desc:'最高火力'},
+];
+
+// ============================================================
+// RACES
+// ============================================================
+const RARC = {
+  'RARE':        {color:'#88aaff',bg:'rgba(136,170,255,.1)'},
+  'SUPER RARE':  {color:'#30d0e8',bg:'rgba(48,208,232,.1)'},
+  'EPIC':        {color:'#a040e0',bg:'rgba(160,64,224,.1)'},
+  'LEGEND RARE': {color:'#f0c040',bg:'rgba(240,192,64,.1)'},
+};
+const RACES = [
+  {id:'human',    name:'ヒューマン',rarity:'RARE',        prob:.4398, desc:'攻撃力% +5%',                                                      buffs:{atkPctBonus:5}},
+  {id:'tank',     name:'タンク',    rarity:'RARE',        prob:.3898, desc:'防御力 +8%',                                                       buffs:{defMul:1.08}},
+  {id:'fishman',  name:'魚人',      rarity:'SUPER RARE',  prob:.1,    desc:'最大HP +250',                                                      buffs:{hpBonus:250}},
+  {id:'sky',      name:'スカイ',    rarity:'SUPER RARE',  prob:.06,   desc:'攻撃クールダウン -0.15秒',                                         buffs:{cdReduce:150}},
+  {id:'shinigami',name:'死神',      rarity:'EPIC',        prob:.005,  desc:'ライフスティール +2% / 攻撃力% +15%',                              buffs:{lifesteal:2,atkPctBonus:15}},
+  {id:'shadow',   name:'シャドウ',  rarity:'EPIC',        prob:.004,  desc:'攻撃力% +20% / クリ確率 +5%',                                     buffs:{atkPctBonus:20,critRateBonus:5}},
+  {id:'angel',    name:'エンジェル',rarity:'LEGEND RARE', prob:.0007, desc:'攻撃力% +45% / クリ確率 +10% / クリ倍率 +20% / 防御 +15%',        buffs:{atkPctBonus:45,critRateBonus:10,critDmgBonus:20,defMul:1.15}},
+  {id:'demon',    name:'デーモン',  rarity:'LEGEND RARE', prob:.0005, desc:'攻撃力% +40% / クリ確率 +15% / クリ倍率 +15% / ライフスティール +3%', buffs:{atkPctBonus:40,critRateBonus:15,critDmgBonus:15,lifesteal:3}},
+];
+
+// ============================================================
+// UPGRADES
+// ============================================================
+const UPGRADES = [
+  {id:'dmg',     name:'ATK% アップ',        max:20,costD:2,costC:0,desc:'ATK% +10%/回 (武器ATKとは別)'},
+  {id:'critRate',name:'CRIT確率上昇',        max:20,costD:0,costC:2,desc:'CRIT確率 +5%/回'},
+  {id:'critDmg', name:'CRITダメージ上昇',    max:20,costD:1,costC:1,desc:'CRIT倍率 +20%/回'},
+  {id:'luck',    name:'ラック上昇',          max:20,costD:1,costC:1,desc:'LUCK +1/回'},
+  {id:'atkCd',   name:'攻撃CD短縮',          max:20,costD:2,costC:1,desc:'通常攻撃CD -30ms/回 (最低100ms)'},
+  {id:'skillCd', name:'スキルCD短縮',        max:20,costD:1,costC:2,desc:'全スキルCD -5%/回 (最大-75%)'},
+];
+
+// ============================================================
+// QUESTS
+// ============================================================
+const QUESTS = [
+  // --- 基本クエスト（誰でも見える）---
+  {
+    id:'q_kill10',   name:'最初の戦い',
+    desc:'敵を10体倒す',
+    type:'kill', target:10,
+    reward:{type:'atkpct',amount:10},
+    rewardDesc:'ATK% +10% 永続',
+  },
+  {
+    id:'q_kill30',   name:'戦士への道',
+    desc:'敵を30体倒す',
+    type:'kill', target:30,
+    reward:{type:'atkpct',amount:15},
+    rewardDesc:'ATK% +15% 永続',
+  },
+  {
+    id:'q_coin500',  name:'コイン稼ぎ',
+    desc:'コインを500枚貯める',
+    type:'coinTotal', target:500,
+    reward:{type:'atkpct',amount:10},
+    rewardDesc:'ATK% +10% 永続',
+  },
+  {
+    id:'q_lv20',     name:'レベルの壁',
+    desc:'Lv.5に到達する',
+    type:'level', target:5,
+    reward:{type:'unlock',what:'dungeon',label:'ダンジョン解放'},
+    rewardDesc:'🏰 ダンジョン解放',
+  },
+  // --- 乱闘（能力付き）解放クエスト ---
+  {
+    id:'q_brawl_fire',  name:'炎使いの証',
+    desc:'敵を50体倒す',
+    type:'kill', target:50,
+    reward:{type:'weapon',what:'brawl_fire',label:'🔥炎の拳 解放'},
+    rewardDesc:'🔥 炎の拳（乱闘）解放',
+  },
+  {
+    id:'q_brawl_iron',  name:'鉄の意志',
+    desc:'敵を100体倒す',
+    type:'kill', target:100,
+    reward:{type:'weapon',what:'brawl_iron',label:'🥊鉄拳 解放'},
+    rewardDesc:'🥊 鉄拳（乱闘）解放',
+  },
+  {
+    id:'q_kill60',   name:'熟練の剣士',
+    desc:'敵を10体倒す',
+    type:'kill', target:10,
+    reward:{type:'unlock',what:'race',label:'種族ガチャ解放'},
+    rewardDesc:'🎲 種族ガチャ解放',
+  },
+  {
+    id:'q_kill100',  name:'百の屍',
+    desc:'敵を20体倒す',
+    reward:{type:'skill',what:'critSkill',label:'✨ クリ確定スキル解放'},
+    rewardDesc:'✨ クリ確定スキル解放！',
+    type:'kill', target:20,
+  },
+  {
+    id:'q_kill200',  name:'殲滅者',
+    desc:'敵を30体倒す',
+    type:'kill', target:30,
+    reward:{type:'unlock',what:'upgrade',label:'強化メニュー解放'},
+    rewardDesc:'⬆️ 強化メニュー解放',
+  },
+  {
+    id:'q_brawl_storm', name:'嵐を呼ぶ者',
+    desc:'敵を300体倒す',
+    type:'kill', target:300,
+    reward:{type:'weapon',what:'brawl_storm',label:'🌪️嵐の連打 解放'},
+    rewardDesc:'🌪️ 嵐の連打（乱闘）解放',
+  },
+  {
+    id:'q_lv50',     name:'強者の証',
+    desc:'Lv.50に到達する',
+    type:'level', target:50,
+    reward:{type:'atkpct',amount:20},
+    rewardDesc:'ATK% +20% 永続',
+  },
+  {
+    id:'q_brawl_dragon', name:'龍に挑む者',
+    desc:'敵を500体倒す',
+    type:'kill', target:500,
+    reward:{type:'weapon',what:'brawl_dragon',label:'🐉龍の咆哮 解放'},
+    rewardDesc:'🐉 龍の咆哮（乱闘）解放',
+  },
+  {
+    id:'q_lv100',    name:'伝説への扉',
+    desc:'Lv.100に到達する',
+    type:'level', target:100,
+    reward:{type:'atkpct',amount:30},
+    rewardDesc:'ATK% +30% 永続',
+  },
+  {
+    id:'q_brawl_god', name:'神に至る道',
+    desc:'敵を1000体倒す',
+    type:'kill', target:1000,
+    reward:{type:'weapon',what:'brawl_god',label:'✊神拳 解放'},
+    rewardDesc:'✊ 神拳（乱闘）解放',
+  },
+  // 共通スキル
+  {
+    id:'q_skill_burst', name:'炎の戦士',
+    desc:'敵を40体倒す',
+    type:'kill', target:40,
+    reward:{type:'skill',what:'burstSkill',label:'🔥 乱闘爆発スキル解放'},
+    rewardDesc:'🔥 乱闘爆発スキル解放（乱闘・3倍ダメージ）',
+  },
+  {
+    id:'q_skill_blade', name:'剣の使い手',
+    desc:'Lv.10に到達する',
+    type:'level', target:10,
+    reward:{type:'skill',what:'bladeSkill',label:'🗡️ 剣技スキル解放'},
+    rewardDesc:'🗡️ 剣技スキル解放（剣・5連撃）',
+  },
+  // 乱闘スキル解放
+  {
+    id:'q_skill_rageskin', name:'怒りの皮膚',
+    desc:'敵を80体倒す',
+    type:'kill', target:80,
+    reward:{type:'skill',what:'rageSkin',label:'😤 怒り装甲スキル解放'},
+    rewardDesc:'😤 怒り装甲（乱闘・10秒間被ダメ-80%）',
+  },
+  {
+    id:'q_skill_ironbody', name:'鋼鉄の肉体',
+    desc:'Lv.20に到達する',
+    type:'level', target:20,
+    reward:{type:'skill',what:'ironBody',label:'🛡️ 鋼体スキル解放'},
+    rewardDesc:'🛡️ 鋼体（乱闘・次の攻撃無敵カウンター）',
+  },
+  {
+    id:'q_skill_dragonpunch', name:'龍の目覚め',
+    desc:'敵を150体倒す',
+    type:'kill', target:150,
+    reward:{type:'skill',what:'dragonPunch',label:'🐉 龍撃スキル解放'},
+    rewardDesc:'🐉 龍撃（乱闘・6倍ダメ+ライフスティール強化）',
+  },
+  {
+    id:'q_skill_souleat', name:'魂喰らい',
+    desc:'敵を400体倒す',
+    type:'kill', target:400,
+    reward:{type:'skill',what:'soulEat',label:'💀 魂喰らいスキル解放'},
+    rewardDesc:'💀 魂喰らい（乱闘・敵現在HP20%即時削除）',
+  },
+  // 剣スキル解放
+  {
+    id:'q_skill_piercefang', name:'貫通の牙',
+    desc:'敵を60体倒す',
+    type:'kill', target:60,
+    reward:{type:'skill',what:'pierceFang',label:'🔱 貫通突きスキル解放'},
+    rewardDesc:'🔱 貫通突き（剣・2倍貫通ダメージ）',
+  },
+  {
+    id:'q_skill_whirlwind', name:'旋風剣士',
+    desc:'Lv.25に到達する',
+    type:'level', target:25,
+    reward:{type:'skill',what:'whirlwind',label:'🌪️ 旋風斬りスキル解放'},
+    rewardDesc:'🌪️ 旋風斬り（剣・全体3連ヒット）',
+  },
+  {
+    id:'q_skill_thunderslash', name:'雷光一閃',
+    desc:'敵を250体倒す',
+    type:'kill', target:250,
+    reward:{type:'skill',what:'thunderSlash',label:'⚡ 雷光斬りスキル解放'},
+    rewardDesc:'⚡ 雷光斬り（剣・超速10連撃）',
+  },
+  {
+    id:'q_skill_soulblade', name:'魂の剣',
+    desc:'敵を600体倒す',
+    type:'kill', target:600,
+    reward:{type:'skill',what:'soulBlade',label:'🌟 魂剣スキル解放'},
+    rewardDesc:'🌟 魂剣（剣・8倍ダメージ必殺）',
+  },
+];
+
+// ============================================================
+// SKILL COOLDOWNS
+// ============================================================
+const CDMAP = {
+  crit:8000,
+  // 乱闘系
+  burst:12000, rageSkin:20000, ironBody:18000, dragonPunch:25000, soulEat:30000,
+  // 剣系
+  blade:15000, pierceFang:10000, whirlwind:20000, thunderSlash:22000, soulBlade:35000,
+};
+const cdEnd = {};
+for(const k of Object.keys(CDMAP)) cdEnd[k]=0;
+
+// スキルCD短縮を適用
+function getSkillCd(key){
+  const base=CDMAP[key];
+  const pct=Math.min(0.75,(G.upgrades.skillCd||0)*0.05);
+  return Math.floor(base*(1-pct));
+}
+
+// ============================================================
+// COMPUTED STATS
+// ============================================================
+function computeStats() {
+  const r    = G.race ? RACES.find(x=>x.id===G.race) : null;
+  const b    = r?.buffs || {};
+  const w    = WEAPONS.find(x=>x.id===G.equippedWeapon) || WEAPONS[0];
+  const isSw = G.equippedWeapon !== 'brawl' && !w.brawlMode;
+  const wb   = w.bonus || {};  // 乱闘モードの武器ボーナス
+
+  // ステータスポイントを振るほど大幅に強くなる
+  const brawlBonus = G.brawlStat * (isSw ? 1.5 : 5);
+  const swordBonus = G.swordStat * (isSw ? 5 : 0.5);
+  const statBonus  = brawlBonus + swordBonus;
+  const baseDmg    = w.baseDmg + statBonus;
+
+  // ATK%: from upgrades, race bonus, permanent atkPercent, and brawl weapon bonus
+  const atkPct = (G.upgrades.dmg * 10) + (b.atkPctBonus||0) + G.atkPercent + (wb.atkPct||0);
+
+  // Final ATK = baseDmg × (1 + atkPct/100)
+  const atk = baseDmg * (1 + atkPct / 100);
+
+  return {
+    baseDmg:   Math.floor(baseDmg),
+    atkPct,
+    atk,
+    critRate:  5  + G.upgrades.critRate*5  + (b.critRateBonus||0) + (wb.critRate||0),
+    critDmg:   150 + G.upgrades.critDmg*20 + (b.critDmgBonus||0) + (wb.critDmg||0),
+    luck:      1  + G.upgrades.luck,
+    hpMax:     100 + (b.hpBonus||0) + (G.hpStat||0)*10,
+    defMul:    (b.defMul||1) + (wb.defMul||0),
+    lifesteal: b.lifesteal||0,
+    cd:        Math.max(100, 600 - (b.cdReduce||0) - (wb.cdReduce||0) - (G.upgrades.atkCd||0)*30),
+  };
+}
+
+// ============================================================
+// CANVAS
+// ============================================================
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+let W=0, H=0, GY=0;
+
+function resize(){
+  W  = canvas.width  = window.innerWidth;
+  H  = canvas.height = window.innerHeight;
+  GY = H - 138;
+}
+resize();
+window.addEventListener('resize', resize);
+
+const player = {x:100, y:0, w:28, h:58, anim:0, atkFrame:0, hitFlash:0};
+let enemies=[], particles=[];
+let lastAtk = 0;
+
+// ── Spawn enemy ──
+function spawnEnemy(){
+  const lv  = G.level;
+  const mul = G.gameMode==='dungeon' ? 1+G.dungeonWave*.4 : G.gameMode==='crystal' ? 2.5 : 1;
+  // Scale HP and ATK harder with level
+  const milestone=getEnemyMilestoneMultiplier(lv);
+  const isBoss=(lv>0 && lv%20===0);
+  const hp  = Math.floor((3 + lv*0.5) * mul * milestone);
+  const atk = Math.max(1, Math.floor((1 + lv*0.15) * mul * milestone));
+  const coin= Math.floor((10 + lv*5 + Math.random()*lv*3) * mul * milestone);
+  const xpTierBonus = Math.pow(2.0, Math.floor(lv/20)); // tier毎に2倍
+  const xp  = Math.floor((800 + lv*300) * mul * xpTierBonus);
+  enemies.push({
+    x:W-110, y:0, w:30, h:58,
+    hp, hpMax:hp, atk, anim:0,
+    hitFlash:0, dead:false, deathT:0,
+    atkTimer:0, atkCd:1800+Math.random()*700,
+    coin, xp,
+  });
+}
+
+// ── Particles ──
+function burst(x,y,col,n=10){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2, s=1.5+Math.random()*4;
+    particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-2,r:2+Math.random()*3,color:col,life:35+Math.random()*20,maxLife:55});
+  }
+}
+
+// ── Float damage text ──
+function fdmg(x,y,text,col,sz=18){
+  const el=document.createElement('div');
+  el.className='fdmg';
+  el.textContent=text;
+  el.style.cssText=`left:${x}px;top:${y-20}px;font-size:${sz}px;color:${col};text-shadow:0 2px 6px rgba(0,0,0,.8)`;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),1000);
+}
+
+// ── Draw background ──
+function drawBG(){
+  const sky=ctx.createLinearGradient(0,0,0,GY);
+  sky.addColorStop(0,'#03050e');sky.addColorStop(1,'#060a14');
+  ctx.fillStyle=sky; ctx.fillRect(0,0,W,GY);
+  ctx.fillStyle='rgba(255,255,255,.28)';
+  for(let i=0;i<90;i++){
+    const sx=(i*137.5+7)%W, sy=(i*89.3+3)%(GY-20);
+    ctx.beginPath(); ctx.arc(sx,sy,i%4===0?1.3:.6,0,Math.PI*2); ctx.fill();
+  }
+  ctx.fillStyle='rgba(12,22,50,.5)';
+  for(let i=0;i<5;i++){
+    const mx=W*i/4.5+30, mh=50+i*13;
+    ctx.beginPath(); ctx.moveTo(mx-55,GY); ctx.lineTo(mx,GY-mh); ctx.lineTo(mx+55,GY); ctx.fill();
+  }
+  const gnd=ctx.createLinearGradient(0,GY,0,GY+50);
+  gnd.addColorStop(0,'#231706'); gnd.addColorStop(1,'#080503');
+  ctx.fillStyle=gnd; ctx.fillRect(0,GY,W,H-GY+10);
+  ctx.strokeStyle='#4a2e0e'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(0,GY); ctx.lineTo(W,GY); ctx.stroke();
+}
+
+// ── Draw stick figure ──
+function drawFig(x,y,w,h,col,flash,mirror,atk,anim){
+  ctx.save();
+  if(mirror){ctx.scale(-1,1); x=-(x+w);}
+  const cx=x+w/2, gy=y+h, c=flash>0?'#fff':col;
+  const walk=Math.sin(anim*.12);
+  ctx.strokeStyle=c; ctx.lineWidth=2.5; ctx.lineCap='round';
+  // Head
+  ctx.beginPath(); ctx.arc(cx,y+9,8,0,Math.PI*2);
+  ctx.fillStyle=flash>0?'rgba(255,255,255,.2)':`${col}20`; ctx.fill(); ctx.stroke();
+  // Body
+  ctx.beginPath(); ctx.moveTo(cx,y+17); ctx.lineTo(cx,y+h*.58); ctx.stroke();
+  // Legs
+  ctx.beginPath(); ctx.moveTo(cx,y+h*.58); ctx.lineTo(cx-9+walk*8,gy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx,y+h*.58); ctx.lineTo(cx+9-walk*8,gy); ctx.stroke();
+  // Arms
+  if(atk){
+    ctx.beginPath(); ctx.moveTo(cx,y+h*.32); ctx.lineTo(cx+22,y+h*.14); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx,y+h*.32); ctx.lineTo(cx-10,y+h*.5);  ctx.stroke();
+  } else {
+    ctx.beginPath(); ctx.moveTo(cx,y+h*.32); ctx.lineTo(cx-11+Math.cos(anim*.12)*5,y+h*.52); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx,y+h*.32); ctx.lineTo(cx+11-Math.cos(anim*.12)*5,y+h*.52); ctx.stroke();
+  }
+  // Weapon
+  if(G.equippedWeapon!=='brawl' && !mirror){
+    ctx.strokeStyle='#c8c8d8'; ctx.lineWidth=3.5;
+    const wx=atk?cx+38:cx+22, wy=atk?y+h*.05:y+h*.28;
+    ctx.beginPath(); ctx.moveTo(cx+18,y+h*.3); ctx.lineTo(wx,wy); ctx.stroke();
+    ctx.lineWidth=1.5;
+    const mx2=(cx+18+wx)/2, my2=(y+h*.3+wy)/2;
+    const dx=-(wy-(y+h*.3)), dy=wx-(cx+18), dl=Math.sqrt(dx*dx+dy*dy)||1;
+    ctx.beginPath(); ctx.moveTo(mx2+dx/dl*7,my2+dy/dl*7); ctx.lineTo(mx2-dx/dl*7,my2-dy/dl*7); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawEnemy(e){
+  if(e.dead){
+    ctx.save(); ctx.globalAlpha=Math.max(0,1-e.deathT/25);
+    ctx.translate(e.x+e.w/2,e.y+e.h/2); ctx.rotate(e.deathT*.08);
+    drawFig(-e.w/2,-e.h/2,e.w,e.h,'#e84040',0,false,false,0);
+    ctx.restore(); return;
+  }
+  drawFig(e.x,e.y,e.w,e.h,'#e84040',e.hitFlash,true,false,e.anim);
+  // HP bar
+  const bw=64,bh=7,bx=e.x+e.w/2-bw/2,by=e.y-15;
+  ctx.fillStyle='rgba(0,0,0,.75)'; ctx.fillRect(bx,by,bw,bh);
+  const pct=e.hp/e.hpMax;
+  ctx.fillStyle=pct>.5?'#40c040':pct>.25?'#f0c040':'#e84040';
+  ctx.fillRect(bx,by,bw*pct,bh);
+  ctx.strokeStyle='#333'; ctx.lineWidth=.5; ctx.strokeRect(bx,by,bw,bh);
+  // Level label
+  const isBossE=(G.level>0&&G.level%20===0);
+  ctx.fillStyle=isBossE?'#f0c040':'rgba(255,255,255,.6)'; ctx.font=(isBossE?'bold ':'')+'9px Rajdhani'; ctx.textAlign='center';
+  ctx.fillText((isBossE?'⭐':'')+'Lv.'+G.level,e.x+e.w/2,by-2);
+  if(isBossE){
+    ctx.shadowColor='#f0c040';ctx.shadowBlur=10;
+    ctx.strokeStyle='rgba(240,192,64,.4)';ctx.lineWidth=1.5;
+    ctx.strokeRect(e.x-4,e.y-4,e.w+8,e.h+8);
+    ctx.shadowBlur=0;
+  }
+}
+
+// ============================================================
+// ATTACK
+// ============================================================
+function doAttack(){
+  const s   = computeStats();
+  const now = Date.now();
+  if(now - lastAtk < s.cd) return;
+  lastAtk = now;
+  player.atkFrame = 14;
+
+  const e = enemies.find(x=>!x.dead);
+  if(!e) return;
+
+  let dmg = s.atk;
+  const isCrit = G.guaranteeCrit || Math.random()*100 < s.critRate;
+  G.guaranteeCrit = false;
+  if(isCrit) dmg = dmg * s.critDmg / 100;
+  dmg = Math.floor(dmg);
+
+  e.hp -= dmg; e.hitFlash = 8;
+  burst(e.x+e.w/2, e.y+e.h/2, isCrit?'#f0c040':'#ff5544', isCrit?14:8);
+  fdmg(e.x+e.w/2, e.y, (isCrit?'💥':'')+dmg, isCrit?'#f0c040':'#fff', isCrit?26:18);
+
+  if(s.lifesteal>0){
+    const heal=Math.max(1,Math.floor(dmg*s.lifesteal/100));
+    G.hp=Math.min(G.hpMax,G.hp+heal);
+  }
+  if(e.hp<=0) killEnemy(e);
+  else triggerEnemyCounter(e);
+}
+
+function triggerEnemyCounter(e){
+  if(!e||e.dead) return;
+  // Enemy counter-attacks with 25% chance after each player attack
+  if(Math.random()<0.25) enemyAtk(e);
+}
+
+function doCritSkill(){
+  if(!G.unlockedSkills.critSkill) return;
+  if(cdEnd.crit > Date.now()) return;
+  cdEnd.crit = Date.now() + getSkillCd("crit");
+  G.guaranteeCrit = true;
+  notify('✨ 次の攻撃クリティカル確定！','#a040e0');
+}
+
+// ── 乱闘系スキル共通チェック ──
+function isBrawlEquipped(){
+  const w=WEAPONS.find(x=>x.id===G.equippedWeapon)||WEAPONS[0];
+  return G.equippedWeapon==='brawl'||w.brawlMode;
+}
+function isSwordEquipped(){
+  const w=WEAPONS.find(x=>x.id===G.equippedWeapon)||WEAPONS[0];
+  return G.equippedWeapon!=='brawl'&&!w.brawlMode;
+}
+function getEnemy(){ return enemies.find(x=>!x.dead)||null; }
+function dealDmg(e,dmg,col,icon,sz){
+  if(e.dead) return 0;
+  const actual=Math.min(dmg, e.hp); // HPを0未満にしない
+  e.hp-=actual; e.hitFlash=8;
+  burst(e.x+e.w/2,e.y+e.h/2,col,10);
+  fdmg(e.x+e.w/2,e.y,(icon||'')+actual,col,sz||20);
+  const s=computeStats();
+  if(s.lifesteal>0){ G.hp=Math.min(G.hpMax,G.hp+Math.max(1,Math.floor(actual*s.lifesteal/100))); }
+  if(e.hp<=0) killEnemy(e);
+  return actual;
+}
+
+// 🔥 爆発拳：乱闘・3倍ダメージ
+function doBurstSkill(){
+  if(!G.unlockedSkills.burstSkill) return;
+  if(cdEnd.burst>Date.now()) return;
+  if(!isBrawlEquipped()){notify('🔥 乱闘系武器が必要！','#e84040');return;}
+  const e=getEnemy(); if(!e){notify('敵がいない！','#e84040');return;}
+  cdEnd.burst=Date.now()+getSkillCd("burst");
+  const s=computeStats();
+  dealDmg(e,Math.floor(s.atk*3),'#ff6400','🔥',30);
+  notify('🔥 爆発拳！','#ff6400');
+}
+
+// 😤 怒り装甲：乱闘・10秒間被ダメ-80%
+let rageActive=false, rageEnd=0;
+function doRageSkin(){
+  if(!G.unlockedSkills.rageSkin) return;
+  if(cdEnd.rageSkin>Date.now()) return;
+  if(!isBrawlEquipped()){notify('😤 乱闘系武器が必要！','#e84040');return;}
+  cdEnd.rageSkin=Date.now()+getSkillCd("rageSkin");
+  rageActive=true; rageEnd=Date.now()+10000;
+  player.hitFlash=30;
+  notify('😤 怒り装甲発動！10秒間被ダメ-80%！','#e84040');
+  setTimeout(()=>{rageActive=false; notify('怒り装甲終了','#5a6080');},10000);
+}
+
+// 🛡️ 鋼体：乱闘・次の被弾を完全無効＆カウンター
+let ironBodyActive=false;
+function doIronBody(){
+  if(!G.unlockedSkills.ironBody) return;
+  if(cdEnd.ironBody>Date.now()) return;
+  if(!isBrawlEquipped()){notify('🛡️ 乱闘系武器が必要！','#e84040');return;}
+  cdEnd.ironBody=Date.now()+getSkillCd("ironBody");
+  ironBodyActive=true;
+  player.hitFlash=20;
+  notify('🛡️ 鋼体発動！次の攻撃を無効化＆カウンター！','#aaaacc');
+}
+
+// 🐉 龍撃：乱闘・6倍ダメ
+function doDragonPunch(){
+  if(!G.unlockedSkills.dragonPunch) return;
+  if(cdEnd.dragonPunch>Date.now()) return;
+  if(!isBrawlEquipped()){notify('🐉 乱闘系武器が必要！','#e84040');return;}
+  const e=getEnemy(); if(!e){notify('敵がいない！','#e84040');return;}
+  cdEnd.dragonPunch=Date.now()+getSkillCd("dragonPunch");
+  const s=computeStats();
+  const isCrit=Math.random()*100<s.critRate;
+  const dmg=Math.floor(s.atk*6*(isCrit?s.critDmg/100:1));
+  burst(e.x+e.w/2,e.y+e.h/2,'#f0c040',25);
+  dealDmg(e,dmg,'#f0c040','🐉',32);
+  notify('🐉 龍撃'+(isCrit?' クリティカル！':'！'),'#f0c040');
+}
+
+// 💀 魂喰らい：乱闘・敵現在HP20%即時削除
+function doSoulEat(){
+  if(!G.unlockedSkills.soulEat) return;
+  if(cdEnd.soulEat>Date.now()) return;
+  if(!isBrawlEquipped()){notify('💀 乱闘系武器が必要！','#e84040');return;}
+  const e=getEnemy(); if(!e){notify('敵がいない！','#e84040');return;}
+  cdEnd.soulEat=Date.now()+getSkillCd("soulEat");
+  const dmg=Math.max(1,Math.floor(e.hp*0.2));
+  dealDmg(e,dmg,'#a040e0','💀',28);
+  notify('💀 魂喰らい！敵HP20%削除！','#a040e0');
+}
+
+// 🗡️ 五連撃：剣・5連撃（即時計算でHP管理）
+function doBladeSkill(){
+  if(!G.unlockedSkills.bladeSkill) return;
+  if(cdEnd.blade>Date.now()) return;
+  if(!isSwordEquipped()){notify('🗡️ 剣系武器が必要！','#e84040');return;}
+  const e=getEnemy(); if(!e){notify('敵がいない！','#e84040');return;}
+  cdEnd.blade=Date.now()+getSkillCd("blade");
+  const s=computeStats();
+  for(let i=0;i<5;i++){
+    const isCrit=Math.random()*100<s.critRate;
+    const dmg=Math.floor(s.atk*(isCrit?s.critDmg/100:1));
+    setTimeout(()=>{
+      const target=getEnemy();
+      if(!target) return;
+      dealDmg(target,dmg,'#4488ff',isCrit?'💥':'',isCrit?22:18);
+    }, i*90);
+  }
+  notify('🗡️ 五連撃！','#4488ff');
+}
+
+// 🔱 貫通突き：剣・2倍ダメージ単発
+function doPierceFang(){
+  if(!G.unlockedSkills.pierceFang) return;
+  if(cdEnd.pierceFang>Date.now()) return;
+  if(!isSwordEquipped()){notify('🔱 剣系武器が必要！','#e84040');return;}
+  const e=getEnemy(); if(!e){notify('敵がいない！','#e84040');return;}
+  cdEnd.pierceFang=Date.now()+getSkillCd("pierceFang");
+  const s=computeStats();
+  const isCrit=Math.random()*100<s.critRate;
+  const dmg=Math.floor(s.atk*2*(isCrit?s.critDmg/100:1));
+  dealDmg(e,dmg,'#30d0e8','🔱',26);
+  notify('🔱 貫通突き！','#30d0e8');
+}
+
+// 🌪️ 旋風斬り：剣・3連ヒット
+function doWhirlwind(){
+  if(!G.unlockedSkills.whirlwind) return;
+  if(cdEnd.whirlwind>Date.now()) return;
+  if(!isSwordEquipped()){notify('🌪️ 剣系武器が必要！','#e84040');return;}
+  const e=getEnemy(); if(!e){notify('敵がいない！','#e84040');return;}
+  cdEnd.whirlwind=Date.now()+getSkillCd("whirlwind");
+  const s=computeStats();
+  for(let i=0;i<3;i++){
+    if(e.dead) break;
+    const dmg=Math.floor(s.atk*1.5);
+    setTimeout(()=>{ if(!e.dead) dealDmg(e,dmg,'#40c070','🌪️',22); },i*120);
+  }
+  notify('🌪️ 旋風斬り！','#40c070');
+}
+
+// ⚡ 雷光斬り：剣・超速10連撃
+function doThunderSlash(){
+  if(!G.unlockedSkills.thunderSlash) return;
+  if(cdEnd.thunderSlash>Date.now()) return;
+  if(!isSwordEquipped()){notify('⚡ 剣系武器が必要！','#e84040');return;}
+  const e=getEnemy(); if(!e){notify('敵がいない！','#e84040');return;}
+  cdEnd.thunderSlash=Date.now()+getSkillCd("thunderSlash");
+  const s=computeStats();
+  for(let i=0;i<10;i++){
+    if(e.dead) break;
+    const isCrit=Math.random()*100<s.critRate;
+    const dmg=Math.floor(s.atk*0.8*(isCrit?s.critDmg/100:1));
+    setTimeout(()=>{ if(!e.dead) dealDmg(e,dmg,'#ffe040',isCrit?'⚡':'',isCrit?20:16); },i*50);
+  }
+  notify('⚡ 雷光斬り！','#ffe040');
+}
+
+// 🌟 魂剣：剣・8倍ダメージ必殺
+function doSoulBlade(){
+  if(!G.unlockedSkills.soulBlade) return;
+  if(cdEnd.soulBlade>Date.now()) return;
+  if(!isSwordEquipped()){notify('🌟 剣系武器が必要！','#e84040');return;}
+  const e=getEnemy(); if(!e){notify('敵がいない！','#e84040');return;}
+  cdEnd.soulBlade=Date.now()+getSkillCd("soulBlade");
+  const s=computeStats();
+  const dmg=Math.floor(s.atk*8);
+  burst(e.x+e.w/2,e.y+e.h/2,'#f0c040',30);
+  dealDmg(e,dmg,'#f0c040','🌟',36);
+  notify('🌟 魂剣発動！','#f0c040');
+}
+
+let lastLvUpSoundTime=0;
+function playLvUpSound(){
+  const now=Date.now();
+  if(now-lastLvUpSoundTime<300) return; // debounce rapid level ups
+  lastLvUpSoundTime=now;
+  try{
+    const sfx=document.getElementById('lvup-sfx');
+    if(sfx){sfx.currentTime=0;sfx.volume=0.6;sfx.play().catch(()=>{});}
+  }catch(e){}
+}
+
+// Enemy milestone: every 20 player levels, enemy gets a power spike
+function getEnemyMilestoneMultiplier(lv){
+  const tier=Math.floor(lv/20); // +1 tier every 20 levels
+  return 1 + tier*0.2; // +20% per tier
+}
+
+function killEnemy(e){
+  if(e.dead) return;
+  e.dead=true; e.hp=0;
+  G.kills++; G.coins+=e.coin; G.totalCoinsEarned=(G.totalCoinsEarned||0)+e.coin;
+  burst(e.x+e.w/2,e.y+e.h/2,'#f0c040',16);
+  fdmg(e.x+e.w/2,e.y-20,'+💰'+e.coin,'#f0c040',14);
+
+  G.xp += e.xp;
+  while(G.xp >= G.xpNext && G.level<20000){
+    G.xp  -= G.xpNext;
+    G.level++;
+    const pts = G.level<=100 ? 2 : G.level<=500 ? 5 : 10;
+    G.statPoints += pts;
+    G.xpNext = Math.floor(10 * Math.pow(1.012, G.level));
+    const s=computeStats(); G.hpMax=s.hpMax; G.hp=G.hpMax;
+    playLvUpSound();
+    if(G.level%10===0) notify('⬆️ Lv.'+G.level+' UP！','#f0c040');
+    if(G.level%20===0 && G.level>0) notify('💀 敵が強化された！ (Tier '+Math.floor(G.level/20)+')','#e84040');
+  }
+
+  checkQuestProgress();
+
+  if(G.gameMode==='dungeon'){
+    G.dungeonWave++;
+    if(G.dungeonWave>=5){
+      G.dungeonTokens+=3; G.gameMode='play';
+      document.getElementById('state-chip').style.display='none';
+      notify('🏰 ダンジョンクリア！🏰+3','#f0c040');
+      enemies=enemies.filter(x=>!x.dead);spawnEnemy();
+    } else {
+      document.getElementById('state-chip').textContent='🏰 Wave '+(G.dungeonWave+1)+'/5';
+      enemies=enemies.filter(x=>!x.dead);spawnEnemy();
+    }
+  } else if(G.gameMode==='crystal'){
+    G.crystalTokens+=3; G.gameMode='play';
+    document.getElementById('state-chip').style.display='none';
+    notify('💎 クリスタルクリア！💎+3','#30d0e8');
+    enemies=enemies.filter(x=>!x.dead);spawnEnemy();
+  } else {
+    enemies=enemies.filter(x=>!x.dead);spawnEnemy();
+  }
+
+  autoSave();
+}
+
+function enemyAtk(e){
+  // 鋼体：無効＆カウンター
+  if(ironBodyActive){
+    ironBodyActive=false;
+    notify('🛡️ 鋼体！攻撃を無効化＆カウンター！','#aaaacc');
+    const s=computeStats();
+    dealDmg(e,Math.floor(s.atk*2),'#aaaacc','🛡️',26);
+    return;
+  }
+  const s=computeStats();
+  let d=Math.max(1,Math.floor(e.atk/s.defMul));
+  // 怒り装甲：被ダメ80%減
+  if(rageActive && Date.now()<rageEnd) d=Math.max(1,Math.floor(d*0.2));
+  G.hp=Math.max(0,G.hp-d);
+  player.hitFlash=10;
+  fdmg(player.x+player.w/2,player.y,'-'+d,'#e84040',16);
+  if(G.hp<=0){
+    const s2=computeStats(); G.hp=s2.hpMax;
+    notify('💀 やられた！','#e84040');
+  }
+}
+
+// ============================================================
+// QUEST SYSTEM
+// ============================================================
+function checkQuestProgress(){
+  let newReady=false;
+  for(const q of QUESTS){
+    if(G.completedQuests.includes(q.id)) continue;
+    if(q.requires && !G.completedQuests.includes(q.requires)) continue;
+    const prog=getQuestProgress(q);
+    if(prog>=q.target && !isQuestReady(q)){
+      if(!G.questProgress[q.id]) G.questProgress[q.id]={ready:false};
+      G.questProgress[q.id].ready=true;
+      newReady=true;
+      notify('📜 クエスト達成！「'+q.name+'」受け取り可能','#f0c040');
+    }
+  }
+  updateQuestBadge();
+}
+
+function isQuestReady(q){
+  return G.questProgress[q.id]?.ready;
+}
+
+function getQuestProgress(q){
+  if(q.type==='kill')      return G.kills;
+  if(q.type==='level')     return G.level;
+  if(q.type==='coinTotal') return G.totalCoinsEarned||0;
+  return 0;
+}
+
+function claimQuest(qid){
+  const q=QUESTS.find(x=>x.id===qid);
+  if(!q||G.completedQuests.includes(qid)) return;
+  G.completedQuests.push(qid);
+  if(G.questProgress[qid]) G.questProgress[qid].ready=false;
+  applyReward(q);
+  notify('🎉 報酬獲得: '+q.rewardDesc,'#f0c040');
+  updateMenuLocks();
+  autoSave();
+  renderQuests();
+}
+
+function applyReward(q){
+  const r=q.reward;
+  if(r.type==='unlock') G.unlockedMenus[r.what]=true;
+  if(r.type==='skill')  G.unlockedSkills[r.what]=true;
+  if(r.type==='atkpct') G.atkPercent+=r.amount;
+  if(r.type==='weapon'){
+    if(!G.inventory.includes(r.what)) G.inventory.push(r.what);
+  }
+}
+
+function updateQuestBadge(){
+  const ready=QUESTS.filter(q=>!G.completedQuests.includes(q.id)&&isQuestReady(q)).length;
+  document.getElementById('quest-badge').textContent=ready>0?` 🔴`:'';
+}
+
+function updateMenuLocks(){
+  const m=G.unlockedMenus;
+  document.getElementById('mbtn-upg').classList.toggle('locked',!m.upgrade);
+  document.getElementById('mbtn-dng').classList.toggle('locked',!m.dungeon);
+  document.getElementById('mbtn-race').classList.toggle('locked',!m.race);
+
+  const brawl=isBrawlEquipped(), sword=isSwordEquipped();
+
+  // 全スキルの定義: [id, unlockedKey, brawlOnly, swordOnly]
+  const SKILL_DEFS=[
+    {id:'crit',        key:'critSkill',    brawl:true,  sword:false},
+    {id:'burst',       key:'burstSkill',   brawl:true,  sword:false},
+    {id:'rageSkin',    key:'rageSkin',     brawl:true,  sword:false},
+    {id:'ironBody',    key:'ironBody',     brawl:true,  sword:false},
+    {id:'dragonPunch', key:'dragonPunch',  brawl:true,  sword:false},
+    {id:'soulEat',     key:'soulEat',      brawl:true,  sword:false},
+    {id:'blade',       key:'bladeSkill',   brawl:false, sword:true},
+    {id:'pierceFang',  key:'pierceFang',   brawl:false, sword:true},
+    {id:'whirlwind',   key:'whirlwind',    brawl:false, sword:true},
+    {id:'thunderSlash',key:'thunderSlash', brawl:false, sword:true},
+    {id:'soulBlade',   key:'soulBlade',    brawl:false, sword:true},
+  ];
+
+  for(const def of SKILL_DEFS){
+    const btn=document.getElementById('sk-'+def.id);
+    if(!btn) continue;
+    const unlocked=G.unlockedSkills[def.key];
+    // 乱闘装備時のみ乱闘スキル、剣装備時のみ剣スキルを表示
+    const visible = (def.brawl&&brawl) || (def.sword&&sword);
+    btn.style.display = visible ? 'flex' : 'none';
+    btn.classList.toggle('locked', !unlocked);
+    const lockTxt=document.getElementById(def.id+'-lock-txt');
+    if(lockTxt) lockTxt.style.display=unlocked?'none':'block';
+  }
+}
+
+// ============================================================
+// GAME LOOP
+// ============================================================
+let lastTs=0;
+function loop(ts){
+  const dt=ts-lastTs; lastTs=ts;
+  update(dt); render();
+  requestAnimationFrame(loop);
+}
+
+function update(dt){
+  player.anim++;
+  if(player.hitFlash>0) player.hitFlash--;
+  if(player.atkFrame>0) player.atkFrame--;
+  player.y=GY-player.h;
+
+  for(const e of enemies){
+    if(e.dead){e.deathT++;continue;}
+    e.anim++; if(e.hitFlash>0) e.hitFlash--;
+    e.y=GY-e.h;
+    // enemy attacks handled by triggerEnemyCounter() called from doAttack
+  }
+  enemies=enemies.filter(e=>!e.dead||e.deathT<28);
+
+  for(const p of particles){p.x+=p.vx;p.y+=p.vy;p.vy+=.12;p.life--;}
+  particles=particles.filter(p=>p.life>0);
+
+  updateCDBtns();
+  updateHUD();
+}
+
+function render(){
+  ctx.clearRect(0,0,W,H); drawBG();
+  for(const p of particles){
+    ctx.save(); ctx.globalAlpha=p.life/p.maxLife;
+    ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.r*(p.life/p.maxLife),0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+  drawFig(player.x,player.y,player.w,player.h,'#60b8ff',player.hitFlash,false,player.atkFrame>0,player.anim);
+  for(const e of enemies) drawEnemy(e);
+}
+
+// ============================================================
+// HUD
+// ============================================================
+function fmt(n){if(n>=1e9)return(n/1e9).toFixed(1)+'B';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return n;}
+
+function updateHUD(){
+  const s=computeStats();
+  G.hpMax=s.hpMax; G.hp=Math.min(G.hp,G.hpMax);
+  document.getElementById('hp-bar').style.width=(G.hp/G.hpMax*100)+'%';
+  document.getElementById('hp-txt').textContent=G.hp+'/'+G.hpMax;
+  document.getElementById('xp-bar').style.width=(G.xp/G.xpNext*100)+'%';
+  document.getElementById('xp-txt').textContent=fmt(G.xp)+'/'+fmt(G.xpNext);
+  document.getElementById('lv-chip').textContent='Lv.'+G.level;
+  document.getElementById('coin-txt').textContent=fmt(G.coins);
+  document.getElementById('dt-txt').textContent=G.dungeonTokens;
+  document.getElementById('ct-txt').textContent=G.crystalTokens;
+  document.getElementById('kill-chip').textContent='💀 '+G.kills;
+  const dd=document.getElementById('d-owned'); if(dd)dd.textContent=G.dungeonTokens;
+  const cd=document.getElementById('c-owned'); if(cd)cd.textContent=G.crystalTokens;
+}
+
+function updateCDBtns(){
+  const now=Date.now();
+  const atkBtn=document.getElementById('sk-attack');
+  const s=computeStats();
+  const atkRem=lastAtk+s.cd-now;
+  if(atkRem>0){
+    atkBtn.classList.add('on-cd');
+    const el=document.getElementById('cd-attack');
+    el.style.display='block'; el.textContent=(atkRem/1000).toFixed(1)+'s';
+  } else {
+    atkBtn.classList.remove('on-cd');
+    document.getElementById('cd-attack').style.display='none';
+  }
+  for(const k of Object.keys(CDMAP)){
+    const btn=document.getElementById('sk-'+k);
+    const el=document.getElementById('cd-'+k);
+    if(!btn||!el) continue;
+    const rem=cdEnd[k]-now;
+    if(rem>0){btn.classList.add('on-cd');el.style.display='block';el.textContent=(rem/1000).toFixed(1)+'s';}
+    else{btn.classList.remove('on-cd');el.style.display='none';}
+  }
+}
+
+// ============================================================
+// MODALS
+// ============================================================
+function openModal(id){
+  // Check locks
+  // inventory always unlocked
+  // shop always unlocked
+  if(id==='upgrade-modal'   && !G.unlockedMenus.upgrade) {notify('クエストをクリアして解放！','#e84040');return;}
+  if(id==='dungeon-modal'   && !G.unlockedMenus.dungeon) {notify('クエストをクリアして解放！','#e84040');return;}
+  if(id==='race-modal'      && !G.unlockedMenus.race)    {notify('クエストをクリアして解放！','#e84040');return;}
+  document.getElementById(id).classList.remove('hidden');
+  if(id==='status-modal')    renderStatus();
+  if(id==='inventory-modal') renderInventory();
+  if(id==='store-modal')     renderStore();
+  if(id==='upgrade-modal')   renderUpgrade();
+  if(id==='race-modal')      renderRaceList();
+  if(id==='quest-modal')     renderQuests();
+}
+function closeModal(id){document.getElementById(id).classList.add('hidden');}
+
+// STATUS
+function renderStatus(){
+  const s=computeStats();
+  const r=G.race?RACES.find(x=>x.id===G.race):null;
+  const rc=r?RARC[r.rarity]:null;
+  const statRows=[
+    {t:'hp',    label:'❤️ 体力',    note:'+10HP/pt', val:G.hpStat},
+    {t:'brawl', label:'👊 乱闘ATK', note:'+5/pt',    val:G.brawlStat},
+    {t:'sword', label:'⚔️ 剣ATK',   note:'+5/pt',    val:G.swordStat},
+  ];
+  const statHtml=statRows.map(row=>{
+    return '<div style="margin-bottom:9px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">'
+      +'<span style="font-size:12px;color:var(--muted)">'+row.label+' <span style="font-size:10px;color:var(--muted)">'+row.note+'</span></span>'
+      +'<span style="font-weight:700;font-size:14px">'+row.val+'</span>'
+      +'</div>'
+      +'<div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">'
+      +'<button class="sctrl" onclick="addStat(\''+row.t+'\',-('+row.val+'))">全戻</button>'
+      +'<button class="sctrl" onclick="addStat(\''+row.t+'\',-10)">-10</button>'
+      +'<button class="sctrl" onclick="addStat(\''+row.t+'\',-1)">-1</button>'
+      +'<input id="si-'+row.t+'" type="number" min="1" value="1" style="width:52px;height:28px;background:rgba(255,255,255,.07);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;text-align:center;font-family:\'Rajdhani\',sans-serif;font-weight:700">'
+      +'<button class="sctrl" onclick="addStat(\''+row.t+'\',1)">+1</button>'
+      +'<button class="sctrl" onclick="addStat(\''+row.t+'\',10)">+10</button>'
+      +'<button class="abtn blue" style="font-size:11px;padding:3px 9px;height:28px" onclick="addStatInput(\''+row.t+'\',1)">振る</button>'
+      +'<button class="abtn" style="font-size:11px;padding:3px 9px;height:28px;background:transparent;border:1px solid var(--gold);color:var(--gold)" onclick="addStatInput(\''+row.t+'\',-1)">戻す</button>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+  document.getElementById('status-content').innerHTML=
+    '<table class="stbl">'
+    +'<tr><td style="color:var(--muted)">基礎ATK (武器+ステ)</td><td>'+s.baseDmg+'</td></tr>'
+    +'<tr><td style="color:var(--muted)">ATK% (種族/強化)</td><td style="color:var(--gold)">+'+s.atkPct+'%</td></tr>'
+    +'<tr><td style="color:var(--muted)">最終ATK</td><td style="color:var(--red)">'+Math.floor(s.atk)+'</td></tr>'
+    +'<tr><td style="color:var(--muted)">CRIT確率</td><td>'+s.critRate+'%</td></tr>'
+    +'<tr><td style="color:var(--muted)">CRIT倍率</td><td>'+s.critDmg+'%</td></tr>'
+    +'<tr><td style="color:var(--muted)">最大HP</td><td>'+s.hpMax+'</td></tr>'
+    +'<tr><td style="color:var(--muted)">防御倍率</td><td>'+s.defMul.toFixed(2)+'x</td></tr>'
+    +'<tr><td style="color:var(--muted)">ライフスティール</td><td>'+s.lifesteal+'%</td></tr>'
+    +'<tr><td style="color:var(--muted)">LUCK</td><td>'+s.luck+'</td></tr>'
+    +'<tr><td style="color:var(--muted)">攻撃CD</td><td>'+(s.cd/1000).toFixed(2)+'s</td></tr>'
+    +'<tr><td style="color:var(--muted)">種族</td><td style="color:'+(rc?rc.color:'var(--muted)')+'">'+( r?r.name:'なし')+'</td></tr>'
+    +'<tr><td style="color:var(--muted)">武器</td><td>'+(WEAPONS.find(w=>w.id===G.equippedWeapon)?.name||'')+'</td></tr>'
+    +'</table>'
+    +'<div style="margin-top:12px;padding:11px;background:var(--s2);border:1px solid var(--border);border-radius:10px">'
+    +'<div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">⚔️ ステータスポイント配分 <span style="color:var(--cyan)">(残り'+G.statPoints+')</span></div>'
+    +'<p style="font-size:11px;color:var(--muted);margin-bottom:8px">※入力欄に数値を入れて「振る／戻す」で一括配分できます。</p>'
+    +statHtml
+    +'</div>';
+}
+
+function addStatInput(type, dir){
+  const el=document.getElementById('si-'+type);
+  const n=Math.max(1,parseInt(el?.value)||1);
+  addStat(type, dir*n);
+}
+
+function addStat(type,delta){
+  if(type==='hp'){
+    if(delta>0){const add=Math.min(delta,G.statPoints);if(add<=0){notify('ポイント不足！','#e84040');return;}G.hpStat+=add;G.statPoints-=add;}
+    else{const sub=Math.min(-delta,G.hpStat);G.hpStat-=sub;G.statPoints+=sub;}
+    const s=computeStats();G.hpMax=s.hpMax;G.hp=Math.min(G.hp,G.hpMax);
+    renderStatus();return;
+  }
+  if(delta>0){
+    const add=Math.min(delta,G.statPoints);
+    if(add<=0){notify('ポイント不足！','#e84040');return;}
+    G[type+'Stat']+=add; G.statPoints-=add;
+  } else {
+    const sub=Math.min(-delta,G[type+'Stat']);
+    G[type+'Stat']-=sub; G.statPoints+=sub;
+  }
+  renderStatus();
+}
+
+// INVENTORY
+function renderInventory(){
+  let h='';
+  for(const id of G.inventory){
+    const w=WEAPONS.find(x=>x.id===id); if(!w) continue;
+    const eq=G.equippedWeapon===id;
+    const tag=w.brawlMode?`<span style="font-size:10px;padding:1px 6px;background:rgba(255,100,0,.2);border:1px solid #ff6400;color:#ff9940;border-radius:8px;margin-left:4px">乱闘</span>`:
+              (w.id==='brawl'?`<span style="font-size:10px;padding:1px 6px;background:rgba(255,100,0,.2);border:1px solid #ff6400;color:#ff9940;border-radius:8px;margin-left:4px">乱闘</span>`:'');
+    h+=`<div class="card"><div class="crow" style="margin-top:0"><div><h3>${w.icon} ${w.name}${tag}</h3><p>基礎攻撃力: ${w.baseDmg}　${w.desc}</p></div><button class="abtn ${eq?'eqd':'eq'}" onclick="equipW('${id}')">${eq?'装備中':'装備'}</button></div></div>`;
+  }
+  document.getElementById('inventory-content').innerHTML=h||'<p style="color:var(--muted);text-align:center;padding:20px">アイテムなし</p>';
+}
+function equipW(id){G.equippedWeapon=id;notify('⚔️ '+WEAPONS.find(w=>w.id===id)?.name+' 装備！','#40c070');updateMenuLocks();renderInventory();}
+
+// STORE
+function renderStore(){
+  let h='';
+  for(const w of WEAPONS){
+    if(w.id==='brawl') continue;
+    const owned=G.inventory.includes(w.id);
+    const can=!owned&&G.coins>=w.price;
+    const tag=w.brawlMode?`<span style="font-size:10px;padding:1px 6px;background:rgba(255,100,0,.2);border:1px solid #ff6400;color:#ff9940;border-radius:8px;margin-left:4px">乱闘</span>`:'';
+    // 乱闘武器はクエスト解放のみ、購入不可
+    const questOnly=w.brawlMode&&!owned;
+    h+=`<div class="card"><div class="crow" style="margin-top:0;align-items:flex-start"><div style="flex:1"><h3>${w.icon} ${w.name}${tag}</h3><p>基礎攻撃力: ${w.baseDmg}　${w.desc}</p></div><div style="text-align:right">${questOnly?`<div style="font-size:10px;color:var(--muted);margin-bottom:5px">クエスト解放</div><span style="font-size:11px;color:var(--muted)">🔒 未解放</span>`:`<div style="font-size:12px;color:var(--gold);font-weight:700;margin-bottom:5px">${owned?'':('💰'+w.price)}</div>${owned?'<span style="font-size:11px;color:var(--green)">✓ 所持済</span>':`<button class="abtn gold" ${can?'':'disabled'} onclick="buyW('${w.id}')">購入</button>`}`}</div></div></div>`;
+  }
+  document.getElementById('store-content').innerHTML=h;
+}
+function buyW(id){
+  const w=WEAPONS.find(x=>x.id===id);
+  if(!w||G.coins<w.price||G.inventory.includes(id)) return;
+  G.coins-=w.price; G.inventory.push(id);
+  notify('⚔️ '+w.name+' 入手！','#f0c040');
+  renderStore(); autoSave();
+}
+
+// UPGRADE
+function renderUpgrade(){
+  let h='';
+  for(const u of UPGRADES){
+    const lv=G.upgrades[u.id], maxed=lv>=u.max;
+    const can=!maxed&&G.dungeonTokens>=u.costD&&G.crystalTokens>=u.costC;
+    const filledW = Math.round((lv/u.max)*100);
+    const costStr = `${u.costD>0?'🏰'+u.costD+' ':''}${u.costC>0?'💎'+u.costC:''}`;
+    h+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid var(--border)">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:baseline;gap:5px;margin-bottom:2px">
+          <span style="font-size:12px;font-weight:700">${u.name}</span>
+          <span style="font-size:10px;color:var(--muted)">${lv}/${u.max}</span>
+          <span style="font-size:10px;color:var(--cyan);margin-left:auto">${costStr}</span>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:3px">${u.desc}</div>
+        <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+          <div style="height:100%;width:${filledW}%;background:${maxed?'var(--gold)':'var(--blue)'};border-radius:2px;transition:width .2s"></div>
+        </div>
+      </div>
+      <button class="abtn blue" style="font-size:11px;padding:4px 10px;flex-shrink:0" ${can&&!maxed?'':'disabled'} onclick="doUpg('${u.id}')">${maxed?'MAX':'強化'}</button>
+    </div>`;
+  }
+  document.getElementById('upgrade-content').innerHTML=`<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden">${h}</div>`;
+}
+function doUpg(id){
+  const u=UPGRADES.find(x=>x.id===id); if(!u||G.upgrades[id]>=u.max) return;
+  const md=u.costD-G.dungeonTokens, mc=u.costC-G.crystalTokens;
+  if(md>0||mc>0){
+    let msg='不足: ';
+    if(md>0) msg+=`🏰${md} `;
+    if(mc>0) msg+=`💎${mc}`;
+    notify(msg,'#e84040'); return;
+  }
+  G.dungeonTokens-=u.costD; G.crystalTokens-=u.costC; G.upgrades[id]++;
+  notify('⬆️ '+u.name+' Lv.'+G.upgrades[id],'#4488ff');
+  renderUpgrade(); autoSave();
+}
+
+// DUNGEON
+function startDungeon(){
+  if(!G.unlockedMenus.dungeon){notify('クエストで解放！','#e84040');return;}
+  if(G.level<30){notify('Lv.30以上必要！','#e84040');return;}
+  closeModal('dungeon-modal'); G.gameMode='dungeon'; G.dungeonWave=0; enemies=[];
+  const c=document.getElementById('state-chip'); c.textContent='🏰 Wave 1/5'; c.style.display='block';
+  notify('🏰 ダンジョン開始！','#f0c040'); spawnEnemy();
+}
+function startCrystal(){
+  if(!G.unlockedMenus.dungeon){notify('クエストで解放！','#e84040');return;}
+  if(G.level<50){notify('Lv.50以上必要！','#e84040');return;}
+  closeModal('dungeon-modal'); G.gameMode='crystal'; enemies=[];
+  const c=document.getElementById('state-chip'); c.textContent='💎 クリスタルディフェンス'; c.style.display='block';
+  notify('💎 クリスタルディフェンス開始！','#30d0e8'); spawnEnemy();
+}
+
+// RACE
+function renderRaceList(){
+  // 天井カウンター更新
+  const pe=G.gachaPityEpic||0, pl=G.gachaPityLegend||0;
+  const pd=document.getElementById('pity-display');
+  if(pd) pd.textContent=`エピック天井: あと${(10000-pe).toLocaleString()}回 ／ レジェンド天井: あと${(100000-pl).toLocaleString()}回`;
+
+  let h='';
+  for(const r of RACES){
+    const rc=RARC[r.rarity];
+    h+=`<div style="border:1px solid ${rc.color};background:${rc.bg};border-radius:10px;padding:9px;margin-bottom:7px"><span style="display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:${rc.color}22;color:${rc.color};margin-bottom:3px">${r.rarity}</span><div style="font-size:14px;font-weight:700;color:${rc.color}">${r.name}</div><div style="font-size:11px;color:var(--text);margin-top:2px">${r.desc}</div><div style="font-size:10px;color:var(--muted);margin-top:2px">確率: ${(r.prob*100).toFixed(0)}%</div></div>`;
+  }
+  document.getElementById('race-list').innerHTML=h;
+}
+let pendingRace=null;
+let multiRollResults=null;
+
+function rollOne(){
+  G.gachaPityEpic=(G.gachaPityEpic||0)+1;
+  G.gachaPityLegend=(G.gachaPityLegend||0)+1;
+
+  // 天井チェック
+  if(G.gachaPityLegend>=100000){
+    G.gachaPityLegend=0; G.gachaPityEpic=0;
+    const legends=RACES.filter(r=>r.rarity==='LEGEND RARE');
+    return legends[Math.floor(Math.random()*legends.length)];
+  }
+  if(G.gachaPityEpic>=10000){
+    G.gachaPityEpic=0;
+    const epics=RACES.filter(r=>r.rarity==='EPIC'||r.rarity==='LEGEND RARE');
+    return epics[Math.floor(Math.random()*epics.length)];
+  }
+
+  const rand=Math.random(); let cum=0;
+  for(const r of RACES){cum+=r.prob; if(rand<cum) return r;}
+  return RACES[0];
+}
+
+function doRaceRoll(times){
+  const cost=500*times;
+  if(G.coins<cost){notify('💰'+cost.toLocaleString()+'必要！','#e84040');return;}
+  G.coins-=cost;
+
+  if(times===1){
+    pendingRace=rollOne();
+    multiRollResults=null;
+    closeModal('race-modal'); showRR(pendingRace);
+  } else {
+    const results=[];
+    for(let i=0;i<times;i++) results.push(rollOne());
+    multiRollResults=results;
+    pendingRace=null;
+    closeModal('race-modal'); showMultiRR(results);
+  }
+  autoSave();
+}
+
+function showMultiRR(results){
+  // ベストを自動選択（レアリティ順）
+  const order=['LEGEND RARE','EPIC','SUPER RARE','RARE'];
+  let best=results[0];
+  for(const r of results){
+    if(order.indexOf(r.rarity)<order.indexOf(best.rarity)) best=r;
+  }
+
+  const counts={};
+  for(const r of results) counts[r.rarity]=(counts[r.rarity]||0)+1;
+
+  const rc=RARC[best.rarity];
+  const card=document.getElementById('rr-card');
+  card.style.borderColor=rc.color;
+  card.style.background=`radial-gradient(circle at top,${rc.color}22,#0a0e1e)`;
+
+  document.getElementById('rr-name').style.color=rc.color;
+  document.getElementById('rr-name').textContent='×'+results.length+' まとめ結果';
+  document.getElementById('rr-rar').style.color=rc.color;
+  document.getElementById('rr-rar').textContent=
+    Object.entries(counts).map(([rar,n])=>`${rar}×${n}`).join(' / ');
+
+  // 結果一覧表示
+  let listHtml='<div style="max-height:200px;overflow-y:auto;margin:8px 0;display:flex;flex-wrap:wrap;gap:5px;justify-content:center">';
+  for(const r of results){
+    const c=RARC[r.rarity].color;
+    listHtml+=`<span style="border:1px solid ${c};color:${c};border-radius:6px;padding:2px 7px;font-size:11px;font-weight:700">${r.name}</span>`;
+  }
+  listHtml+='</div>';
+  document.getElementById('rr-desc').innerHTML=
+    `<div style="font-size:12px;color:var(--cyan);margin-bottom:5px">✨ 最高レア: <b style="color:${rc.color}">${best.name}</b>（${best.rarity}）</div>`+
+    `<div style="font-size:11px;color:var(--muted);margin-bottom:4px">${best.desc}</div>`+listHtml;
+
+  pendingRace=best;
+  const kb=document.getElementById('rr-keep-btn');
+  kb.style.background=rc.color; kb.style.color='#000';
+  kb.textContent='✓ ベストを装備';
+  document.getElementById('race-result').classList.remove('hidden');
+}
+
+function showRR(r){
+  const rc=RARC[r.rarity];
+  const card=document.getElementById('rr-card');
+  card.style.borderColor=rc.color; card.style.background=`radial-gradient(circle at top,${rc.color}22,#0a0e1e)`;
+  document.getElementById('rr-name').style.color=rc.color; document.getElementById('rr-name').textContent=r.name;
+  document.getElementById('rr-rar').style.color=rc.color;  document.getElementById('rr-rar').textContent=r.rarity;
+  document.getElementById('rr-desc').textContent=r.desc;
+  const kb=document.getElementById('rr-keep-btn'); kb.style.background=rc.color; kb.style.color='#000';
+  kb.textContent='✓ 装備する';
+  document.getElementById('race-result').classList.remove('hidden');
+}
+function keepRace(){
+  if(!pendingRace) return;
+  G.race=pendingRace.id;
+  const r=pendingRace, rc=RARC[r.rarity];
+  const chip=document.getElementById('race-chip');
+  chip.textContent=r.name+' ['+r.rarity+']'; chip.style.color=rc.color; chip.style.borderColor=rc.color; chip.style.background=rc.bg; chip.style.display='block';
+  notify('種族「'+r.name+'」装備！',rc.color);
+  skipRace(); autoSave();
+}
+function skipRace(){pendingRace=null; document.getElementById('race-result').classList.add('hidden');}
+
+// QUESTS
+function renderQuests(){
+  let h='';
+  for(const q of QUESTS){
+    const done=G.completedQuests.includes(q.id);
+    const ready=isQuestReady(q);
+    const prog=Math.min(getQuestProgress(q),q.target);
+    const pct=(prog/q.target*100).toFixed(0);
+    // クエストは全部表示（ロックなし）
+    h+=`<div class="quest-item ${done?'done':''}">
+      <h3 style="color:${done?'var(--gold)':'var(--text)'}">${done?'✅ ':''}${q.name}</h3>
+      <p>${q.desc}</p>
+      <div class="quest-reward">報酬: ${q.rewardDesc}</div>
+      ${!done?`<div class="quest-prog-bg"><div class="quest-prog-fill" style="width:${pct}%"></div></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">${prog}/${q.target} (${pct}%)</div>
+      ${ready?`<button class="quest-claim" onclick="claimQuest('${q.id}')">報酬を受け取る！</button>`:''}
+      `:'<div style="font-size:11px;color:var(--green);margin-top:5px">✓ クリア済み</div>'}
+    </div>`;
+  }
+  document.getElementById('quest-content').innerHTML=h||'<p style="color:var(--muted);text-align:center;padding:20px">クエストなし</p>';
+}
+
+// ============================================================
+// SAVE / LOAD
+// ============================================================
+const SAVE_KEY='fighterRPG_v3';
+
+function autoSave(){
+  try{
+    localStorage.setItem(SAVE_KEY, JSON.stringify(G));
+    const badge=document.getElementById('save-badge');
+    badge.classList.add('show');
+    setTimeout(()=>badge.classList.remove('show'),1500);
+  }catch(e){}
+}
+
+let saveTimer=null;
+// Also auto-save every 30s
+setInterval(autoSave, 30000);
+
+function loadGame(){
+  try{
+    const data=localStorage.getItem(SAVE_KEY);
+    if(!data) return JSON.parse(JSON.stringify(DEFAULT));
+    const saved=JSON.parse(data);
+    const base=JSON.parse(JSON.stringify(DEFAULT));
+    // Deep merge: primitives from saved, objects merged
+    const merged={
+      ...base,
+      level:       saved.level       ?? base.level,
+      xp:          saved.xp          ?? base.xp,
+      xpNext:      saved.xpNext      ?? base.xpNext,
+      hp:          saved.hp          ?? base.hp,
+      hpMax:       saved.hpMax       ?? base.hpMax,
+      coins:       saved.coins       ?? base.coins,
+      kills:       saved.kills       ?? base.kills,
+      dungeonTokens:saved.dungeonTokens ?? base.dungeonTokens,
+      crystalTokens:saved.crystalTokens ?? base.crystalTokens,
+      statPoints:  saved.statPoints  ?? base.statPoints,
+      brawlStat:   saved.brawlStat   ?? base.brawlStat,
+      swordStat:   saved.swordStat   ?? base.swordStat,
+      hpStat:      saved.hpStat      ?? base.hpStat,
+      atkPercent:  saved.atkPercent  ?? base.atkPercent,
+      equippedWeapon:saved.equippedWeapon ?? base.equippedWeapon,
+      inventory:   saved.inventory   ?? base.inventory,
+      race:        saved.race        ?? base.race,
+      totalCoinsEarned: saved.totalCoinsEarned ?? base.totalCoinsEarned,
+      gachaPityEpic:   saved.gachaPityEpic   ?? 0,
+      gachaPityLegend: saved.gachaPityLegend ?? 0,
+      guaranteeCrit:false,
+      gameMode:    'play',
+      dungeonWave: 0,
+      upgrades:      {...base.upgrades,      ...(saved.upgrades      ||{})},
+      unlockedSkills:{...base.unlockedSkills,...(saved.unlockedSkills||{})},
+      unlockedMenus: {...base.unlockedMenus,  ...(saved.unlockedMenus ||{})},
+      questProgress: {...base.questProgress,  ...(saved.questProgress ||{})},
+      completedQuests:saved.completedQuests  || [],
+    };
+    return merged;
+  }catch(e){console.error('loadGame error',e);return JSON.parse(JSON.stringify(DEFAULT));}
+}
+
+// ============================================================
+// NOTIFY
+// ============================================================
+function notify(msg,col='#f0c040'){
+  const s=document.getElementById('nstack');
+  const el=document.createElement('div');
+  el.className='nitem'; el.style.color=col; el.style.borderColor=col; el.textContent=msg;
+  s.appendChild(el);
+  setTimeout(()=>el.remove(),2600);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+// レベルに応じた累計ステータスポイントを計算（レベル1からlvまでの合計）
+function calcTotalStatPointsForLevel(lv){
+  let total=0;
+  for(let i=2;i<=lv;i++){
+    total += i<=100 ? 2 : i<=500 ? 5 : 10;
+  }
+  return total;
+}
+
+function init(){
+  // Load saved data NOW (after all functions defined)
+  const loaded = loadGame();
+  // Replace all keys properly
+  for(const k of Object.keys(loaded)) G[k]=loaded[k];
+  // ショップは常に解放
+  G.unlockedMenus.shop=true;
+  G.unlockedMenus.inventory=true;
+
+  // ── レベルに応じたポイント補填 ──
+  // 既に使用したポイント数 = (brawlStat + swordStat + hpStat)
+  const usedPoints = (G.brawlStat||0) + (G.swordStat||0) + (G.hpStat||0);
+  const totalShouldHave = calcTotalStatPointsForLevel(G.level);
+  const expectedFree = totalShouldHave - usedPoints;
+  if(expectedFree > G.statPoints){
+    const bonus = expectedFree - G.statPoints;
+    G.statPoints = expectedFree;
+    if(bonus > 0) notify('📦 未受取ポイント +'+bonus+' を補填しました！','#f0c040');
+  }
+
+  const s=computeStats(); G.hpMax=s.hpMax; G.hp=Math.min(G.hp,G.hpMax);
+  updateMenuLocks();
+  updateQuestBadge();
+  checkQuestProgress();
+  spawnEnemy();
+  requestAnimationFrame(loop);
+}
+
+init();
+
+// ダブルタップズーム防止
+let lastTouchEnd=0;
+document.addEventListener('touchend',function(e){
+  const now=Date.now();
+  if(now-lastTouchEnd<=300){ e.preventDefault(); }
+  lastTouchEnd=now;
+},{passive:false});
+document.addEventListener('touchmove',function(e){
+  if(e.touches.length>1) e.preventDefault();
+},{passive:false});
+</script>
+</body>
+</html>
